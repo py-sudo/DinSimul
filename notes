@@ -1,0 +1,22 @@
+pthread_t:
+    pthread_t is a type similar to int and it's created when you define it, 
+    not when you call pthread_create . 
+
+    In the snippet: 
+    pthread_t tid; 
+    int x = pthread_create (&tid, blah, blah, blah);  //it's the first line that creates the variable,
+     although it doesn't hold anything useful until the return from pthread_create
+
+pthread_cond_t:
+    condition variable : A condition (short for ``condition variable'') is a synchronization device 
+    that allows threads to suspend execution and relinquish the processors
+    until some predicate on shared data is satisfied. 
+    he basic operations on conditions are: 
+    signal the condition (when the predicate becomes true), and wait for the condition, 
+    suspending the thread execution until another thread signals the condition
+
+
+pthread_mutex_t:
+
+
+  
