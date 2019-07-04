@@ -1,6 +1,10 @@
 
+
+
 In this pthread program the main program creates N [def. 5] threads that behave as philosophers.
+
 All of them immediately block on condition variable start_line. 
+
 After all threads are created, the main thread wakes them up and 
 then waits until the all of them have completed one cycle (or were blocked waiting for a chopstick or a chair).
 
