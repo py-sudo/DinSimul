@@ -285,7 +285,7 @@ void *clk(void *vptr)
   if (pthrerr != 0)
     fatalerr("Clock", 0, "Mutex unlock failed\n");
 
- printf("total to be over %d\n",ptr->N * ptr->T);
+
   double average_thinking_time = time_spend_on[THINKING] / (ptr->T * ptr->N);
   double average_eating_time = time_spend_on[EATING] / (ptr->T * ptr->N);
   double average_hungry_time = time_spend_on[HUNGRY] / (ptr->T * ptr->N);
