@@ -290,11 +290,7 @@ void *clk(void *vptr)
   double average_eating_time = time_spend_on[EATING] / (ptr->T * ptr->N);
   double average_hungry_time = time_spend_on[HUNGRY] / (ptr->T * ptr->N);
 
-  printf("Total thinking time: %f\n", time_spend_on[THINKING]);
-  printf("Total hungry time %f\n", time_spend_on[HUNGRY]);
-  printf("Total eating time %f\n", time_spend_on[EATING]);
-  printf("\n");
-  printf("\n");
+
   printf("Average thinking time: %6.2f\n", average_thinking_time);
   printf("Average hungry time %6.2f\n", average_eating_time);
   printf("Average eating time %6.2f\n", average_hungry_time);
