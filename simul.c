@@ -265,8 +265,8 @@ void *clk(void *vptr)
   pthrerr = pthread_mutex_lock(ptr->mutex);
   if (pthrerr != 0)
     fatalerr("Clock", 0, "Mutex failed\n");
-
-  for (int i = 0; i < tick; i++)
+  int i;
+  for (i = 0; i < tick; i++)
   {
 
     while (nblocked < ptr->N)
