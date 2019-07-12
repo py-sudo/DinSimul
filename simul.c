@@ -28,10 +28,10 @@
 
 int N = 5, T = 100;
 double L = 0.1, M = 0.2;
-int nblocked; /* The number of threads blocked */
+int nblocked,nhungry; /* The number of threads blocked */
 int *chopstick_state;
 pthread_mutex_t *chop_mutex;
-pthread_mutex_t mutex_time_spend_on;
+pthread_mutex_t mutex_time_spend_on,chair_mutex;
 pthread_cond_t chair = PTHREAD_COND_INITIALIZER;
 
 int condition = 0;
@@ -59,17 +59,17 @@ void *philosopher(void *vptr)
   pid_t my_tid;
   ptr = (struct thread_arg *)vptr;
   my_tid = syscall(SYS_gettid);
-  int nindex = my_tid % ptr->N;
+  int nindex = ptr->index;
 
   seed = ptr->seed;
 
   clock_t start, end;
   double time_used;
-  start = clock();
+ 
   int counter = 0;
   while (1)
   { 
-   // counter ++;
+ 
     //lock mutex
     pthrerr = pthread_mutex_lock(ptr->mutex);
     if (pthrerr != 0)
@@ -85,21 +85,31 @@ void *philosopher(void *vptr)
     }
 
       pthrerr = pthread_cond_wait(ptr->start_line, ptr->mutex); // blocks in the begining
+       start = clock();
       if (pthrerr != 0)
         fatalerr("Philosopher", 0, "Condition wait failed\n");
     
  
-    //unlock mutex
-    pthrerr = pthread_mutex_unlock(ptr->mutex);
-    if (pthrerr != 0)
-      fatalerr("Philosopher", 0, "Mutex unlock failed\n");
-
-   //printf("philosopher %d unlocked and executed %d times\n", nindex,counter);
-
-
-    // thinking mode
-    if (ptr->state == THINKING)
+       // EATING MODE
+    if (ptr->state == EATING)
     {
+      end = clock();
+      time_used = (double)(end - start);
+      pthrerr = pthread_mutex_lock(&mutex_time_spend_on);
+      if (pthrerr != 0)
+        fatalerr("Philosopher", 0, "Time spend on Mutex lock failed\n");
+      time_spend_on[EATING] += (double)(end - start);
+      pthrerr = pthread_mutex_unlock(&mutex_time_spend_on);
+      if (pthrerr != 0)
+        fatalerr("Philosopher", 0, "Time spend on Mutex unlock failed\n");
+
+      if (rand0_1(&seed) < ptr->mu)
+      {
+        ptr->state = THINKING;
+      }
+    
+    }
+  else {   // thinking mode
       end = clock();
       time_used = (double)(end - start) ;
       pthrerr = pthread_mutex_lock(&mutex_time_spend_on);
@@ -110,30 +120,25 @@ void *philosopher(void *vptr)
       if (pthrerr != 0)
         fatalerr("Philosopher", 0, "Time spend on Mutex unlock failed\n");
 
-      if (rand0_1(&seed) < ptr->lam)
+      if (rand0_1(&seed) < ptr->lam)  // become hungry
       {
-        ptr->state = HUNGRY;
-      }
-    } 
-
-    // hungry mode
-     if (ptr->state == HUNGRY)
-    {
+       // ;
+        	  // Fight for chair
+      start = clock();
+      pthrerr = pthread_mutex_lock(&chair_mutex);
       
-      // Fight for chair
-      pthrerr = pthread_mutex_lock(ptr->mutex);
       if (pthrerr != 0)
         fatalerr("Philosopher", 0, "Mutex lock failed\n");
 
       if (total_chairs == 0)
       {
-        pthrerr = pthread_cond_wait(&chair, ptr->mutex);
+        pthrerr = pthread_cond_wait(&chair, &chair_mutex);
         if (pthrerr != 0)
           fatalerr("Philosopher", 0, "Chair Condition unlock failed\n");
       }
       total_chairs--;
       check_chair();
-      pthrerr = pthread_mutex_unlock(ptr->mutex);
+      pthrerr = pthread_mutex_unlock(&chair_mutex);
       if (pthrerr != 0)
         fatalerr("Philosopher", 0, "Mutex unlock failed\n");
 
@@ -149,6 +154,7 @@ void *philosopher(void *vptr)
         pthrerr = pthread_mutex_unlock(chop_mutex + nindex); //unlock the left chopstick mutex
         if (pthrerr != 0)
           fatalerr("Philosopher", 0, "Left chopstick Mutex unlock failed\n");
+
         pthrerr = pthread_mutex_lock(chop_mutex + (nindex + 1) % ptr->N); // lock the right chopstick mutex;
         if (pthrerr != 0)
           fatalerr("Philosopher", 0, "Right chopstick Mutex lock failed\n");
@@ -169,7 +175,7 @@ void *philosopher(void *vptr)
           pthrerr = pthread_mutex_lock(chop_mutex + ((nindex + 1) % ptr->N));
           if (pthrerr != 0)
             fatalerr("Philosopher", 0, "Right chopstick Mutex lock failed\n");
-          pthrerr = pthread_mutex_lock(ptr->mutex);
+          pthrerr = pthread_mutex_lock(&chair_mutex);
           if (pthrerr != 0)
             fatalerr("Philisopher", 0, "Mutex lock failed\n");
 
@@ -185,15 +191,14 @@ void *philosopher(void *vptr)
           pthrerr = pthread_mutex_unlock(chop_mutex + ((nindex + 1) % ptr->N));
           if (pthrerr != 0)
             fatalerr("Philosopher", 0, "Right chopstick Mutex unlock failed\n");
-          pthrerr = pthread_mutex_unlock(ptr->mutex);
+          pthrerr = pthread_mutex_unlock(&chair_mutex);
 
           if (pthrerr != 0)
             fatalerr("Philisopher", 0, "Mutex unlock failed\n");
         }
         else
         { /* the right is unavailable */
-          printf("Philosopher %d: I cannot get the right one!\n\n", nindex);
-
+       //   printf("Philosopher %d: I cannot get the right one!\n\n", nindex);
           pthrerr = pthread_mutex_unlock(chop_mutex + ((nindex + 1) % ptr->N)); /* unlock the right chopstick */
           if (pthrerr != 0)
             fatalerr("Philosopher", 0, "Right chopstick Mutex unlock failed\n");
@@ -204,16 +209,16 @@ void *philosopher(void *vptr)
           pthrerr = pthread_mutex_unlock(chop_mutex + nindex); /* unlock the left chopstick */
           if (pthrerr != 0)
             fatalerr("Philosopher", 0, "Left chopstick Mutex unlock failed\n");
-          //  sleep(1);                                                   /* wait for a while and try again later */
+          
         }
       }
       else
-      {                                                      /* the left chopstick is unavailable */
+      {               /* the left chopstick is unavailable */
         pthrerr = pthread_mutex_unlock(chop_mutex + nindex); /* unlock the left chopstick */
         if (pthrerr != 0)
           fatalerr("Philosopher", 0, "Left chopstick Mutex unlock failed\n");
       }
-      //compute time spent in Hungry mode
+       //compute time spent in Hungry mode
       end = clock();
       time_used = (double)(end - start);
       pthrerr = pthread_mutex_lock(&mutex_time_spend_on);
@@ -223,27 +228,18 @@ void *philosopher(void *vptr)
       pthrerr = pthread_mutex_unlock(&mutex_time_spend_on);
       if (pthrerr != 0)
         fatalerr("Philosopher", 0, "Time spend on Mutex unlock failed\n");
-    }
-     // EATING MODE
-    if (ptr->state == EATING)
-    {
-      end = clock();
-      time_used = (double)(end - start);
-      pthrerr = pthread_mutex_lock(&mutex_time_spend_on);
-      if (pthrerr != 0)
-        fatalerr("Philosopher", 0, "Time spend on Mutex lock failed\n");
-      time_spend_on[EATING] += (double)(end - start);
-      pthrerr = pthread_mutex_unlock(&mutex_time_spend_on);
-      if (pthrerr != 0)
-        fatalerr("Philosopher", 0, "Time spend on Mutex unlock failed\n");
-
-      if (rand0_1(&seed) < ptr->mu)
-      {
-        ptr->state = THINKING;
+      
       }
-    
+     
+        
     }
-    start = clock();
+    
+   pthrerr = pthread_mutex_unlock(ptr->mutex);
+    if (pthrerr != 0)
+      fatalerr("Philosopher", 0, "Mutex unlock failed\n");
+  
+  //unlock mutex
+   
   }
 
   return NULL;
@@ -390,6 +386,7 @@ int main(int argc, char **argv)
   allargs[0].sclkblock = &sclkblock;
   allargs[0].mutex = &mutex;
   allargs[0].seed = 100; // random number
+  allargs[0].index = 0;
 
   total_chairs = nphil - 1;
 
@@ -400,6 +397,7 @@ int main(int argc, char **argv)
 
     chopstick_state[j] = 1; // initialize to avaiable
     allargs[j] = allargs[0];
+    allargs[j].index = j;
 
     // initiliaze chop mutexes
     pthrerr = pthread_mutex_init(chop_mutex + j, NULL);
