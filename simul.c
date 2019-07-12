@@ -28,10 +28,10 @@
 
 int N = 5, T = 100;
 double L = 0.1, M = 0.2;
-int nblocked,nhungry; /* The number of threads blocked */
+int nblocked, nhungry; /* The number of threads blocked */
 int *chopstick_state;
 pthread_mutex_t *chop_mutex;
-pthread_mutex_t mutex_time_spend_on,chair_mutex;
+pthread_mutex_t mutex_time_spend_on, chair_mutex;
 pthread_cond_t chair = PTHREAD_COND_INITIALIZER;
 
 int condition = 0;
@@ -65,11 +65,11 @@ void *philosopher(void *vptr)
 
   clock_t start, end;
   double time_used;
- 
+
   int counter = 0;
   while (1)
-  { 
- 
+  {
+
     //lock mutex
     pthrerr = pthread_mutex_lock(ptr->mutex);
     if (pthrerr != 0)
@@ -79,18 +79,17 @@ void *philosopher(void *vptr)
     if (nblocked == (ptr->N))
     {
       pthrerr = pthread_cond_signal(ptr->sclkblock);
- 
+
       if (pthrerr != 0)
         fatalerr("Philosopher", 0, "Condition signal failed\n");
     }
 
-      pthrerr = pthread_cond_wait(ptr->start_line, ptr->mutex); // blocks in the begining
-       start = clock();
-      if (pthrerr != 0)
-        fatalerr("Philosopher", 0, "Condition wait failed\n");
-    
- 
-       // EATING MODE
+    pthrerr = pthread_cond_wait(ptr->start_line, ptr->mutex); // blocks in the begining
+    start = clock();
+    if (pthrerr != 0)
+      fatalerr("Philosopher", 0, "Condition wait failed\n");
+
+    // EATING MODE
     if (ptr->state == EATING)
     {
       end = clock();
@@ -107,11 +106,11 @@ void *philosopher(void *vptr)
       {
         ptr->state = THINKING;
       }
-    
     }
-  else {   // thinking mode
+    else
+    { // thinking mode
       end = clock();
-      time_used = (double)(end - start) ;
+      time_used = (double)(end - start);
       pthrerr = pthread_mutex_lock(&mutex_time_spend_on);
       if (pthrerr != 0)
         fatalerr("Philosopher", 0, "Time spend on Mutex lock failed\n");
@@ -120,126 +119,120 @@ void *philosopher(void *vptr)
       if (pthrerr != 0)
         fatalerr("Philosopher", 0, "Time spend on Mutex unlock failed\n");
 
-      if (rand0_1(&seed) < ptr->lam)  // become hungry
+      if (rand0_1(&seed) < ptr->lam) // become hungry
       {
-       // ;
-        	  // Fight for chair
-      start = clock();
-      pthrerr = pthread_mutex_lock(&chair_mutex);
-      
-      if (pthrerr != 0)
-        fatalerr("Philosopher", 0, "Mutex lock failed\n");
+        // Fight for chair
+        start = clock();
+        pthrerr = pthread_mutex_lock(&chair_mutex);
 
-      if (total_chairs == 0)
-      {
-        pthrerr = pthread_cond_wait(&chair, &chair_mutex);
         if (pthrerr != 0)
-          fatalerr("Philosopher", 0, "Chair Condition unlock failed\n");
-      }
-      total_chairs--;
-      check_chair();
-      pthrerr = pthread_mutex_unlock(&chair_mutex);
-      if (pthrerr != 0)
-        fatalerr("Philosopher", 0, "Mutex unlock failed\n");
+          fatalerr("Philosopher", 0, "Mutex lock failed\n");
 
-      // switch to EATING mode when chopsticks are available
-      pthrerr = pthread_mutex_lock(chop_mutex + nindex); // lock mutex for left chopstick
-      if (pthrerr != 0)
-        fatalerr("Philosopher", 0, "Left chopstick Mutex lock failed\n");
-
-      if (chopstick_state[nindex] == 1) // left chopstick avaiable
-      {
-        //  printf("Philosopher %d: I got the left one!\n", nindex);
-        chopstick_state[nindex] = 0;                         // lock left chopstick
-        pthrerr = pthread_mutex_unlock(chop_mutex + nindex); //unlock the left chopstick mutex
-        if (pthrerr != 0)
-          fatalerr("Philosopher", 0, "Left chopstick Mutex unlock failed\n");
-
-        pthrerr = pthread_mutex_lock(chop_mutex + (nindex + 1) % ptr->N); // lock the right chopstick mutex;
-        if (pthrerr != 0)
-          fatalerr("Philosopher", 0, "Right chopstick Mutex lock failed\n");
-        // if the right chop is avaiable
-        if (chopstick_state[(nindex + 1) % ptr->N] == 1)
+        if (total_chairs == 0)
         {
-          ptr->state = EATING; // get both chopstick and switch to eating mode
-          //  printf("Philosopher %d: start eating!\n", nindex);
-          chopstick_state[(nindex + 1) % ptr->N] = 0;                         // set to unavaibale
-          pthrerr = pthread_mutex_unlock(chop_mutex + (nindex + 1) % ptr->N); // unlock the right chopstick mutex
+          pthrerr = pthread_cond_wait(&chair, &chair_mutex);
           if (pthrerr != 0)
-            fatalerr("Philosopher", 0, "Right chopstick Mutex unlock failed\n");
+            fatalerr("Philosopher", 0, "Chair Condition unlock failed\n");
+        }
+        total_chairs--;
+        check_chair();
+        pthrerr = pthread_mutex_unlock(&chair_mutex);
+        if (pthrerr != 0)
+          fatalerr("Philosopher", 0, "Mutex unlock failed\n");
 
-          /* lock the left & right chopsticks */
-          pthrerr = pthread_mutex_lock(chop_mutex + nindex);
-          if (pthrerr != 0)
-            fatalerr("Philosopher", 0, "Left chopstick Mutex lock failed\n");
-          pthrerr = pthread_mutex_lock(chop_mutex + ((nindex + 1) % ptr->N));
-          if (pthrerr != 0)
-            fatalerr("Philosopher", 0, "Right chopstick Mutex lock failed\n");
-          pthrerr = pthread_mutex_lock(&chair_mutex);
-          if (pthrerr != 0)
-            fatalerr("Philisopher", 0, "Mutex lock failed\n");
+        // switch to EATING mode when chopsticks are available
+        pthrerr = pthread_mutex_lock(chop_mutex + nindex); // lock mutex for left chopstick
+        if (pthrerr != 0)
+          fatalerr("Philosopher", 0, "Left chopstick Mutex lock failed\n");
 
-          chopstick_state[nindex] = 1;                /*set the left chopstick available */
-          chopstick_state[(nindex + 1) % ptr->N] = 1; /* set the right chopstick available */
-          total_chairs++;
-          check_chair();
-        //  printf("Philosopher %d: finished eating,release chair! total chair is %d\n", nindex, total_chairs);
-          /* unlock the left & right chopsticks */
-          pthrerr = pthread_mutex_unlock(chop_mutex + nindex);
+        if (chopstick_state[nindex] == 1) // left chopstick avaiable
+        {
+          //  printf("Philosopher %d: I got the left one!\n", nindex);
+          chopstick_state[nindex] = 0;                         // lock left chopstick
+          pthrerr = pthread_mutex_unlock(chop_mutex + nindex); //unlock the left chopstick mutex
           if (pthrerr != 0)
             fatalerr("Philosopher", 0, "Left chopstick Mutex unlock failed\n");
-          pthrerr = pthread_mutex_unlock(chop_mutex + ((nindex + 1) % ptr->N));
-          if (pthrerr != 0)
-            fatalerr("Philosopher", 0, "Right chopstick Mutex unlock failed\n");
-          pthrerr = pthread_mutex_unlock(&chair_mutex);
 
+          pthrerr = pthread_mutex_lock(chop_mutex + (nindex + 1) % ptr->N); // lock the right chopstick mutex;
           if (pthrerr != 0)
-            fatalerr("Philisopher", 0, "Mutex unlock failed\n");
+            fatalerr("Philosopher", 0, "Right chopstick Mutex lock failed\n");
+          // if the right chop is avaiable
+          if (chopstick_state[(nindex + 1) % ptr->N] == 1)
+          {
+            ptr->state = EATING; // get both chopstick and switch to eating mode
+            //  printf("Philosopher %d: start eating!\n", nindex);
+            chopstick_state[(nindex + 1) % ptr->N] = 0;                         // set to unavaibale
+            pthrerr = pthread_mutex_unlock(chop_mutex + (nindex + 1) % ptr->N); // unlock the right chopstick mutex
+            if (pthrerr != 0)
+              fatalerr("Philosopher", 0, "Right chopstick Mutex unlock failed\n");
+
+            /* lock the left & right chopsticks */
+            pthrerr = pthread_mutex_lock(chop_mutex + nindex);
+            if (pthrerr != 0)
+              fatalerr("Philosopher", 0, "Left chopstick Mutex lock failed\n");
+            pthrerr = pthread_mutex_lock(chop_mutex + ((nindex + 1) % ptr->N));
+            if (pthrerr != 0)
+              fatalerr("Philosopher", 0, "Right chopstick Mutex lock failed\n");
+            pthrerr = pthread_mutex_lock(&chair_mutex);
+            if (pthrerr != 0)
+              fatalerr("Philisopher", 0, "Mutex lock failed\n");
+
+            chopstick_state[nindex] = 1;                /*set the left chopstick available */
+            chopstick_state[(nindex + 1) % ptr->N] = 1; /* set the right chopstick available */
+            total_chairs++;
+            check_chair();
+            //  printf("Philosopher %d: finished eating,release chair! total chair is %d\n", nindex, total_chairs);
+            /* unlock the left & right chopsticks */
+            pthrerr = pthread_mutex_unlock(chop_mutex + nindex);
+            if (pthrerr != 0)
+              fatalerr("Philosopher", 0, "Left chopstick Mutex unlock failed\n");
+            pthrerr = pthread_mutex_unlock(chop_mutex + ((nindex + 1) % ptr->N));
+            if (pthrerr != 0)
+              fatalerr("Philosopher", 0, "Right chopstick Mutex unlock failed\n");
+            pthrerr = pthread_mutex_unlock(&chair_mutex);
+
+            if (pthrerr != 0)
+              fatalerr("Philisopher", 0, "Mutex unlock failed\n");
+          }
+          else
+          {                                                                       /* the right is unavailable */
+                                                                                  //   printf("Philosopher %d: I cannot get the right one!\n\n", nindex);
+            pthrerr = pthread_mutex_unlock(chop_mutex + ((nindex + 1) % ptr->N)); /* unlock the right chopstick */
+            if (pthrerr != 0)
+              fatalerr("Philosopher", 0, "Right chopstick Mutex unlock failed\n");
+            pthrerr = pthread_mutex_lock(chop_mutex + nindex); /* lock the left chopstick */
+            if (pthrerr != 0)
+              fatalerr("Philosopher", 0, "Left chopstick Mutex lock failed\n");
+            chopstick_state[nindex] = 1;                         /* set the left chopstick available (put down the left one) */
+            pthrerr = pthread_mutex_unlock(chop_mutex + nindex); /* unlock the left chopstick */
+            if (pthrerr != 0)
+              fatalerr("Philosopher", 0, "Left chopstick Mutex unlock failed\n");
+          }
         }
         else
-        { /* the right is unavailable */
-       //   printf("Philosopher %d: I cannot get the right one!\n\n", nindex);
-          pthrerr = pthread_mutex_unlock(chop_mutex + ((nindex + 1) % ptr->N)); /* unlock the right chopstick */
-          if (pthrerr != 0)
-            fatalerr("Philosopher", 0, "Right chopstick Mutex unlock failed\n");
-          pthrerr = pthread_mutex_lock(chop_mutex + nindex); /* lock the left chopstick */
-          if (pthrerr != 0)
-            fatalerr("Philosopher", 0, "Left chopstick Mutex lock failed\n");
-          chopstick_state[nindex] = 1;                         /* set the left chopstick available (put down the left one) */
+        {                                                      /* the left chopstick is unavailable */
           pthrerr = pthread_mutex_unlock(chop_mutex + nindex); /* unlock the left chopstick */
           if (pthrerr != 0)
             fatalerr("Philosopher", 0, "Left chopstick Mutex unlock failed\n");
-          
         }
-      }
-      else
-      {               /* the left chopstick is unavailable */
-        pthrerr = pthread_mutex_unlock(chop_mutex + nindex); /* unlock the left chopstick */
+        //compute time spent in Hungry mode
+        end = clock();
+        time_used = (double)(end - start);
+        pthrerr = pthread_mutex_lock(&mutex_time_spend_on);
         if (pthrerr != 0)
-          fatalerr("Philosopher", 0, "Left chopstick Mutex unlock failed\n");
+          fatalerr("Philosopher", 0, "Time spend on Mutex lock failed\n");
+        time_spend_on[HUNGRY] += (double)(end - start);
+        pthrerr = pthread_mutex_unlock(&mutex_time_spend_on);
+        if (pthrerr != 0)
+          fatalerr("Philosopher", 0, "Time spend on Mutex unlock failed\n");
       }
-       //compute time spent in Hungry mode
-      end = clock();
-      time_used = (double)(end - start);
-      pthrerr = pthread_mutex_lock(&mutex_time_spend_on);
-      if (pthrerr != 0)
-        fatalerr("Philosopher", 0, "Time spend on Mutex lock failed\n");
-      time_spend_on[HUNGRY] += (double)(end - start);
-      pthrerr = pthread_mutex_unlock(&mutex_time_spend_on);
-      if (pthrerr != 0)
-        fatalerr("Philosopher", 0, "Time spend on Mutex unlock failed\n");
-      
-      }
-     
-        
     }
-    
-   pthrerr = pthread_mutex_unlock(ptr->mutex);
+
+    pthrerr = pthread_mutex_unlock(ptr->mutex);
     if (pthrerr != 0)
       fatalerr("Philosopher", 0, "Mutex unlock failed\n");
-  
-  //unlock mutex
-   
+
+    //unlock mutex
   }
 
   return NULL;
@@ -281,11 +274,9 @@ void *clk(void *vptr)
   if (pthrerr != 0)
     fatalerr("Clock", 0, "Mutex unlock failed\n");
 
-
   double average_thinking_time = time_spend_on[THINKING] / (ptr->T * ptr->N);
   double average_eating_time = time_spend_on[EATING] / (ptr->T * ptr->N);
   double average_hungry_time = time_spend_on[HUNGRY] / (ptr->T * ptr->N);
-
 
   printf("Average thinking time: %6.2f\n", average_thinking_time);
   printf("Average hungry time %6.2f\n", average_eating_time);
